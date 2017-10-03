@@ -1,0 +1,292 @@
+setwd("your_path:/organism_name")                 ### Setting the working directory  ###
+###################################################################################################library(Ge library(GenomicRanges)
+library(gplots)
+library(lattice)
+
+### Reading the RepeatMasker file ###
+organism_name_repeats = read.table("rmsk.txt.gz",sep="\t")                                           
+colnames(organism_name_repeats)= 
+c("bin","swScore","milliDiv","milliDel","milliIns","genoName","genoStart","genoEnd","genoLeft","strand",
+"repName","repClass","repFamily","repStart","repEnd","repLeft","id")                                         # Adding column names  
+
+###################################################################################################
+### Creating a genomic range for the organism_name rmsk file using GRanges function ####
+
+gr_repeats = GRanges( seqnames = Rle(organism_name_repeats[,6]),
+              ranges =IRanges (start=organism_name_repeats[,7], end=organism_name_repeats[,8]),
+              #strand = Rle( organism_name_repeats[,10] )
+             )
+gr_repeats
+###################################################################################################
+### Generating repeats within a list of genomic ranges such as introns, exons etc ###
+
+findRepeats <- function (File_Name) {
+	         introns  = read.table(File_Name,sep="\t",header=FALSE)
+	         gr_Introns= GRanges( seqnames = Rle(introns  [,1]),
+               ranges =IRanges (start=introns  [,2], end=introns  [,3]),
+               strand = Rle ( introns  [,6]) 
+               )
+	         overlap <- findOverlaps(gr_Introns,gr_repeats)
+	         write.table(organism_name_repeats[as.matrix(overlap)[,2],],paste(File_Name,"-repeats.txt",sep=""), 
+sep="\t",row.names=FALSE)
+}
+findRepeats("speices_ens_2k_upstream.txt")
+findRepeats("speices_ens_2k_downstream.txt")
+findRepeats("speices_ens_IntronicLoci.txt")
+findRepeats("speices_ens_UTR3.txt")
+findRepeats("speices_ens_CDS.txt")
+findRepeats("speices_ens_UTR5.txt")
+findRepeats("speices_ens_10k_upstream.txt")
+###################################################################################################
+### Calculating the total genome size to estimate proportion coverage ###
+chromInfo =read.table("chromInfo.txt.gz", sep="\t")                  
+TotalChrom = sum( as.numeric(chromInfo[,2]))                                        
+###################################################################################################
+### Generate a list of repeats and their family and class, and occurrences on the genome ###
+
+RepCounts = table(organism_name_repeats[,11])                                                                    
+repeat_info = organism_name_repeats[,11:13]
+repeat_info =unique(repeat_info)                                                   
+ix = match(repeat_info[,1],names(RepCounts))                                       
+ix1= as.matrix (ix)
+repeat_info$count = RepCounts[ix]                                  
+tem = abs( organism_name_repeats[,7]-organism_name_repeats[,8])
+head(tem)                                                                          
+repLength=tapply(tem,organism_name_repeats$repName,FUN=median)
+ix = match(toupper(repeat_info[,1]),toupper(names(repLength)))
+repeat_info$length = repLength[ix]
+colnames(repeat_info) =c("repName","repClass","repFamily","count","Median_matched_length")
+tem = repeat_info[which(repeat_info$repFamily !="CpG_island"),]   
+bwplot(Median_matched_length ~repClass, data = tem, ylab ="Mapped genomic length (bp)",ylim=c(0,1300))
+###################################################################################################
+### Given a list of genomic ranges gr, computes the total base pair covered ###
+        covered_bp <- function (gr) {
+        total_covered = 0
+        covered = coverage(gr)
+        for( i in 1:length(covered)) {
+        lengthList = runLength(covered[[i]])     # this returns the length list
+        valueList = runValue(covered[[i]])       # value = 0 is the uncovered area, so sum up values 1, 2, ...
+        total_covered = total_covered + sum( lengthList[which(valueList>0)]    )   
+       }
+       return(total_covered)
+}
+###################################################################################################
+    # This function computes the repetitive elements that are enriched or depleted in a given region ###
+
+findEnrichment <- function (File_Name1) {
+	introns = read.table(File_Name1,sep="\t",header=FALSE)
+	gr_Introns= GRanges( seqnames = Rle(introns[,1]),
+              ranges =IRanges (start=introns[,2], end=introns[,3]),
+              #strand = Rle ( introns[,6]  )                        
+             )
+      # compute coverage of regions
+      total_covered = covered_bp(gr_Introns)
+	overlap <- findOverlaps(gr_Introns,gr_repeats)
+      repeats <- organism_name_repeats[unique(as.matrix(overlap)[,2]),]
+      merged = as.data.frame( table(repeats$repName)  )
+      colnames(merged)[2]="total"
+
+      ix = match(merged$Var1, names(RepCounts))
+      merged$TotalGenome = RepCounts[ix]
+      merged$FoldEnriched = merged$total/(total_covered)/ (merged$TotalGenome/TotalChrom)   
+      merged$PercentGenome = total_covered/TotalChrom
+
+ ### Binomial test for proportion. The number of repeats observed in promoter regions is proportional to the coverage ###
+      merged$PvalGenome=1
+      for(i in 1:dim(merged)[1]) 
+          merged$PvalGenome[i] = binom.test(merged$total[i], merged$TotalGenome[i],  
+p=total_covered/TotalChrom)$p.value
+      merged$FDRgenome = p.adjust(merged$PvalGenome,method="fdr",n=dim(merged)[1])
+
+      merged$FoldEnriched[which(merged$FDRgenome>.001)]=-1    #-1 means not significant
+
+	write.table(merged,paste(File_Name1,"-statistics.txt",sep=""), sep="\t",row.names=FALSE)
+      return(merged)
+}
+################################################################################################### 
+### Find enriched repeats in genomic regions ###
+e_Intron= findEnrichment("speices_ens_IntronicLoci.txt")                               
+e_UTR3 = findEnrichment("speices_ens_UTR3.txt")                                        
+e_CDS = findEnrichment("speices_ens_CDS.txt")                            
+e_UTR5= findEnrichment("speices_ens_UTR5.txt")                 
+e_Promoter= findEnrichment("speices_ens_2k_upstream.txt")       
+e_Downstream= findEnrichment("speices_ens_2k_downstream.txt")                          
+###################################################################################################
+all = cbind(e_Promoter[,c(1,4)],e_UTR5[,4],e_CDS[,4],e_UTR3[,4],e_Downstream[,4],e_Intron[,4])   
+dim(all)
+head(all)
+colnames(all) =c("ID","Promoter","UTR5","CDS","UTR3","Downstream","Intron")
+selected = which( rowSums(all == "NA")<dim(all)[2] )                       
+all = all[ selected, ]
+fold = all;                                                                
+################################################################################################### 
+ all = cbind(e_Promoter[,c(1,7)],e_UTR5[,7],e_CDS[,7],e_UTR3[,7],e_Downstream[,7],e_Intron[,7])   
+colnames(all) =c("ID","Promoter","UTR5","CDS","UTR3","Downstream","Intron")
+all = all[selected,   ]
+FDR=all                                                                   
+all = cbind(fold,FDR)                                                     
+###################################################################################################
+repClass = match(row.names(fold),repeat_info[,1])                                            
+all$class = repeat_info[repClass,2]                                       
+all$family = repeat_info[repClass,3]
+all$count = repeat_info[repClass,4]
+all$repLength = repeat_info[repClass,5]
+head(all)
+dim(all)
+###################################################################################################
+### Plot enrichment ### 
+library(lattice)
+enriched = all[,c(2:7)]                                                 
+rownames(enriched) = paste(all$family,rownames(enriched),sep=": ")      
+enriched[enriched >1] <- "Enriched"         
+enriched[enriched == -1] <-"Same"
+enriched[enriched <1 ] <-"Depleted"
+enriched =cbind(enriched,all$class) 
+colnames(enriched) = c("Promoter","5'UTR","CDS","3'UTR","Downstream","Intron","class")
+enriched$class =gsub("\\?","",enriched$class)     
+enriched = enriched[which(all$count>200),]        
+###################################################################################################
+### Compute statistics for each region and cocatenate the results ###
+
+for(i in 1:(dim(enriched)[2]-1) ) {
+   count1 = as.data.frame ( table(enriched[,i],enriched$class ) )
+   count1$Region = colnames(enriched[i]) 
+   if( i ==1)  compiled = count1   else
+      compiled = rbind(compiled,count1) 
+}
+colnames(compiled)[1:2] = c("Enrichment","repClass")
+compiled = compiled[which(compiled$Freq>5),]
+
+col <- c("green","red","white")
+barchart(Region ~ Freq | repClass, groups=Enrichment,data=compiled,col=col,
+stack=TRUE,key=list(columns=3,text=list(levels(compiled$Enrichment)),rectangles=list(col=col)),
+xlab = "Number of different repeats", cex.lab=5, cex.axis=3, cex.main=10)
+###################################################################################################
+findEnrichment_strand_specific <- function (File_Name2 ) {
+	introns = read.table(File_Name2,sep="\t",header=FALSE)
+	gr_Introns= GRanges( seqnames = Rle(introns[,1]),
+              ranges =IRanges (start=introns[,2], end=introns[,3]),
+              #strand = Rle ( introns[,6]  )
+             )
+### Compute coverage of regions ###
+      total_covered = covered_bp(gr_Introns)
+	overlap <- findOverlaps(gr_Introns,gr_repeats)
+ 
+      repeats <- organism_name_repeats[as.matrix(overlap)[,2],]   # unique?
+      repeats$repID <- as.matrix(overlap)[,2]    # the id of repeats, to avoid one repeats matches many genes
+
+### Add strand info ###
+      repeats$geneStrand = introns[ as.matrix(overlap)[,1] ,6]
+      repeats$repName_strand =paste(repeats$repName,repeats$strand,repeats$geneStrand,sep="__")
+      repeats$repName_strand = gsub("-__-|\\+__\\+","+",repeats$repName_strand)
+      repeats$repName_strand = gsub("\\+__-|-__\\+","-",repeats$repName_strand)
+
+      repeats$orientation = repeats$repName_strand
+      repeats$orientation = gsub(".*__","",repeats$orientation)
+ 
+   t1=repeats[,c(11,18,21)]
+   t1 = unique(t1)   # remove repetitive entries
+t5p = t1[which(t1$orientation=="+"),]
+t5p = as.data.frame(table(t5p$repName))
+t5n = t1[which(t1$orientation=="-"),]
+t5n = as.data.frame(table(t5n$repName))
+	merged = merge(t5p,t5n,by="Var1",all = TRUE)
+	merged[is.na(merged)] <- 0
+ 	merged$total = merged$Freq.x + merged$Freq.y
+	merged$Pval = 1
+
+	for(i in 1:dim(merged)[1]) {	
+         if(merged$total[i] > 0 )   # only computer P value if total is > 0. when total is zero the P value is already 1
+	      merged$Pval[i] = binom.test(merged$Freq.x[i], merged$total[i])$p.value
+      }
+	merged$FDR = p.adjust(merged$Pval,method="fdr",n=dim(merged)[1])
+	stranded = merged
+	colnames(stranded)[1:3] = c("repName","PositiveStrand","NegativeStrand")
+
+### Compute enriched, regardless of orientation ###
+      repeats <- organism_name_repeats[unique (as.matrix(overlap)[,2]) ,] 
+      merged = as.data.frame( table(repeats$repName)  )
+      colnames(merged)[2]="total"
+
+      ix = match(merged$Var1, names(RepCounts))
+      merged$TotalGenome = RepCounts[ix]
+      merged$FoldEnriched = merged$total/(total_covered)/ (merged$TotalGenome/TotalChrom) 
+      merged$PercentGenome = total_covered/TotalChrom
+      # binomial test for proportion. The number of repeats observed in poromoter regions is proportional to the coverage
+      merged$PvalGenome=1
+      for(i in 1:dim(merged)[1]) { 
+	    if( merged$TotalGenome[i] >0 ) 
+             merged$PvalGenome[i] = binom.test(merged$total[i], merged$TotalGenome[i], 
+             p=total_covered/TotalChrom)$p.value
+	}
+      merged$FDRgenome = p.adjust(merged$PvalGenome,method="fdr",n=dim(merged)[1])
+      merged$FoldEnriched[which(merged$FDRgenome>.001)]=-1    #-1 means not significant
+	#merge the stranded info into enrichment
+	ix = match(merged$Var1, stranded$repName) 
+      merged$same_strand = stranded$PositiveStrand[ix]
+	merged$oppo_strand = stranded$NegativeStrand[ix]
+	merged$strand_specific_FDR = stranded$FDR[ix]  # add strand-specificity info
+	#add family and class info to repeats
+	repClass = match(merged$Var1,repeat_info[,1])
+	merged$class = repeat_info[repClass,2]
+	merged$family = repeat_info[repClass,3]
+	merged$count = repeat_info[repClass,4]
+	merged[is.na(merged)] <- 0
+	write.table(merged,paste(File_Name2,"-statistics_s_s.txt",sep=""), sep="\t",row.names=FALSE)
+      return(merged)
+}
+###################################################################################################
+### Find enriched repeats in genomic regions ###
+e_Intron_s_s= findEnrichment_strand_specific("speices_ens_IntronicLoci.txt")
+e_IntronFirst_s_s= findEnrichment_strand_specific("speices_ens_firstIntrons.txt")
+e_IntronOther_s_s= findEnrichment_strand_specific("speices_ens_OtherIntrons.txt")
+e_UTR3_s_s = findEnrichment_strand_specific("speices_ens_UTR3.txt")
+e_CDS_s_s = findEnrichment_strand_specific("speices_ens_CDS.txt")
+e_UTR5_s_s= findEnrichment_strand_specific("speices_ens_UTR5.txt")
+e_Promoter_s_s= findEnrichment_strand_specific("speices_ens_2k_upstream.txt")                                   
+e_Downstream_s_s= findEnrichment_strand_specific("speices_ens_2k_downstream.txt")
+
+all = cbind(e_Promoter_s_s[,c(1,4)],e_UTR5_s_s[,4],e_CDS_s_s[,4],e_UTR3_s_s[,4],e_Downstream_s_s[,4],e_Intron_s_s[,4],e_IntronFirst_s_s[,4],e_IntronOther_s_s[,4]) 
+colnames(all) =c("ID","Promoter","UTR5","CDS","UTR3","Downstream","Intron","IntronFirst","IntronOther")
+selected = which(  rowSums(all == "NA")<dim(all)[2]    )
+all = all[ selected, ]
+fold = all;
+
+all = cbind(e_Promoter_s_s[,c(1,7)],e_UTR5_s_s[,7],e_CDS_s_s[,7],e_UTR3_s_s[,7],e_Downstream_s_s[,7],e_Intron_s_s[,7],e_IntronFirst_s_s[,7],e_IntronOther_s_s[,7])
+colnames(all) =c("ID","Promoter","UTR5","CDS","UTR3","Downstream","Intron","IntronFirst","IntronOther")
+all = all[selected,   ]
+FDR=all
+all = cbind(e_Promoter_s_s[,c(1,10)],e_UTR5_s_s[,10],e_CDS_s_s[,10],e_UTR3_s_s[,10],e_Downstream_s_s[,10],e_Intron_s_s[,10],e_IntronFirst_s_s[,10],e_IntronOther_s_s[,10])
+colnames(all) =c("ID","Promoter","UTR5","CDS","UTR3","Downstream","Intron","IntronFirst","IntronOther")
+all = all[selected,   ]
+all = cbind(fold,FDR,all)
+repClass = match(row.names(fold),repeat_info[,1])
+all$class = repeat_info[repClass,2]
+all$family = repeat_info[repClass,3]
+all$count = repeat_info[repClass,4]
+all$repLength = repeat_info[repClass,5]
+### Plot strand-specificity ###
+enriched = all[,c(20:24,27)]
+rownames(enriched) = paste(all$family,rownames(enriched),sep=": ")
+enriched2 = enriched
+enriched2[enriched >= .01] <- "Unbiased "
+enriched2[enriched <.01] <- "Strand_specific" 
+enriched = enriched2
+enriched =cbind(enriched,all$class) 
+colnames(enriched) = c("Promoter","5'UTR","CDS","3'UTR","Downstream","Intron","class")
+enriched$class =gsub("\\?","",enriched$class) 
+enriched = enriched[which(all$count>200),] # remove repeats that rarely occur
+### Compute statistics for each region and cocatenate the results ###
+for(i in 1:(dim(enriched)[2]-1) ) {
+   count1 = as.data.frame ( table(enriched[,i],enriched$class ) )
+   count1$Region = colnames(enriched[i]) 
+   if( i ==1)  compiled = count1   else
+      compiled = rbind(compiled,count1) 
+}
+colnames(compiled)[1:2] = c("Enrichment","repClass")
+compiled = compiled[which(compiled$Freq>5),]
+col <- c("blue","white")
+barchart(Region ~ Freq | repClass, groups=Enrichment,data=compiled,col=col,
+stack=TRUE,key=list(columns=2,#title="Distribution of repeats compared to intergenic region",
+text=list(levels(compiled$Enrichment)),rectangles=list(col=col)),
+xlab = "Number of different repeats")
