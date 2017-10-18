@@ -1,0 +1,74 @@
+############  Running Tophat ##############
+
+Human_heart 
+tophat --library-type fr-firststrand  -p 14  -G   /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_heart1   /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_heart_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_heart1/tophat_screen_results &
+Human_kidney
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_kidney    /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_kidney_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_kidney/tophat_screen_results &
+
+Human_liver
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_liver   /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_liver_trimmed.fastq   &> /disk4/aburweism/RNAseq1/Alignment/Human_liver/tophat_screen_results &
+
+Human_lung
+tophat --library-type fr-firststrand  -p 14  -G   /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_lung    /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_lung_trimmed.fastq   &> /disk4/aburweism/RNAseq1/Alignment/Human_lung/tophat_screen_results &
+Human_prostate
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_prostate   /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_prostate_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_prostate/tophat_screen_results &
+
+Human_spleen
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_spleen   /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_spleen_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_spleen/tophat_screen_results &
+
+Human_testis
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_testis    /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_testis_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_testis/tophat_screen_results &
+
+Human_thymus
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_thymus    /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_thymus_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_thymus/tophat_screen_results &
+
+Human_uterus
+tophat --library-type fr-firststrand  -p 14  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf  -o /disk4/aburweism/RNAseq1/Alignment/Human_uterus   /disk4/aburweism/RNAseq/Human_genome/Ensembl/GRCh37/Bowtie2Index/genome  /disk4/aburweism/TrimmedData/Human_uterus_trimmed.fastq  &> /disk4/aburweism/RNAseq1/Alignment/Human_uterus/tophat_screen_results &
+
+############  Running cufflinks ##############
+
+Human_brain
+cufflinks  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf    -o TranscriptCount/Human_brain -p 14 
+Alignment/ Human_brain/accepted_hits_noMT.bam  &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_brain /cufflinks_results &
+Human_heart
+
+cufflinks  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf    -o TranscriptCount/Human_heart -p 14 Alignment/Human_heart/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_heart/cufflinks_results &
+Human_kidney
+
+cufflinks –G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf    -o TranscriptCount/Human_kidney -p 14 Alignment/Human_kidney/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_kidney/cufflinks_results &
+Human_liver
+
+cufflinks  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf     -o TranscriptCount/Human_liver -p 14 Alignment/Human_liver/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_liver/cufflinks_results &
+
+
+Human_lung
+
+cufflinks  -G  /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf     -o TranscriptCount/Human_lung -p 14 Alignment/Human_lung/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_lung/cufflinks_results &
+
+
+Human_prostate
+
+cufflinks -G /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf     -o TranscriptCount/Human_prostate -p 14 Alignment/Human_prostate/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_prostate/cufflinks_results &
+
+
+Human_spleen
+
+cufflinks -G /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf      -o TranscriptCount/Human_spleen -p 14 Alignment/Human_spleen/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_spleen/cufflinks_results &
+
+
+Human_testis
+
+cufflinks -G /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf       -o TranscriptCount/Human_testis -p 14 Alignment/Human_testis/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_testis/cufflinks_results &
+
+
+Human_thymus
+
+cufflinks -G /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf       -o TranscriptCount/Human_thymus -p 14 Alignment/Human_thymus/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_thymus/cufflinks_results &
+
+
+Human_uterus
+
+cufflinks -G /disk4/aburweism/RNAseq/GeneModel/Hs_ensembl_37.gtf   -o TranscriptCount/Human_uterus -p 14 Alignment/Human_uterus/accepted_hits_noMT.bam &> /disk4/aburweism/RNAseq1/TranscriptCount/Human_uterus/cufflinks_results &
+
+
+
